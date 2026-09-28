@@ -1,0 +1,6 @@
+{
+  "name": "StoryVerse",
+  "description": "Interactive storytelling ecosystem with branching fiction, synchronized read and audio listening, community-driven decision voting, and StoryPulse analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
