@@ -20,6 +20,7 @@ import {
   Trophy,
   Flame,
   Plus,
+  Globe,
 } from 'lucide-react';
 import { useStoryVerse } from '../../context/StoryVerseContext';
 import { Chapter } from '../../types';
@@ -45,6 +46,13 @@ export const StoryDetailsView: React.FC = () => {
     toggleCommentLike,
     toggleSpoiler,
     voteSpinOffIntoCanon,
+    readingLanguage,
+    setReadingLanguage,
+    setLanguage,
+    switchAudioLanguage,
+    commentTranslations,
+    toggleCommentTranslation,
+    getLocalizedCommentText,
     t,
     language,
     isRTL,
@@ -182,6 +190,23 @@ export const StoryDetailsView: React.FC = () => {
                   {activeStory.universeTitle}
                 </span>
               )}
+
+              <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-bold flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5" />
+                {t('lang_badge_both')} · {t('lang_status_hi_available')}
+              </span>
+
+              <button
+                onClick={() => {
+                  const nextLang = readingLanguage === 'hi' ? 'en' : 'hi';
+                  setReadingLanguage(nextLang);
+                  setLanguage(nextLang);
+                  switchAudioLanguage(nextLang);
+                }}
+                className="px-3 py-1 rounded-full bg-[#7D2948] text-white text-xs font-bold hover:bg-[#68203a] transition-colors cursor-pointer"
+              >
+                {readingLanguage === 'hi' ? '🇬🇧 Switch to English' : '🇮🇳 हिन्दी में पढ़ें (Read in Hindi)'}
+              </button>
             </div>
 
             {/* Parent branch link if this is a spin-off */}
@@ -817,62 +842,99 @@ export const StoryDetailsView: React.FC = () => {
               </div>
             </form>
 
-            {/* Comments List */}
+            {/* Comments List with Original + Hindi Translation Preservation */}
             <div className="space-y-4">
-              {storyComments.map((comm) => (
-                <div
-                  key={comm.id}
-                  className="p-5 rounded-2xl bg-white dark:bg-[#201C19] border border-[#ECE6DE] dark:border-[#322A24] space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <img src={comm.userAvatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                      <div>
-                        <span className="font-semibold text-xs text-[#1E1B18] dark:text-[#F3ECE4] block leading-none">
-                          {comm.userName}
-                        </span>
-                        <span className="text-[10px] text-[#8E7F73]">{comm.timestamp}</span>
+              {storyComments.map((comm) => {
+                const { text: translatedText } = getLocalizedCommentText({
+                  ...comm,
+                });
+                const isTranslationShown =
+                  commentTranslations[comm.id] !== undefined
+                    ? commentTranslations[comm.id]
+                    : language === 'hi';
+
+                return (
+                  <div
+                    key={comm.id}
+                    className="p-5 rounded-2xl bg-white dark:bg-[#201C19] border border-[#ECE6DE] dark:border-[#322A24] space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <img src={comm.userAvatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        <div>
+                          <span className="font-semibold text-xs text-[#1E1B18] dark:text-[#F3ECE4] block leading-none">
+                            {comm.userName}
+                          </span>
+                          <span className="text-[10px] text-[#8E7F73]">{comm.timestamp}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {comm.timestampAudio && (
+                          <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                            <Headphones className="w-3 h-3" />
+                            {comm.timestampAudio}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => toggleCommentTranslation(comm.id)}
+                          className="px-2.5 py-1 rounded-lg bg-[#7D2948]/10 hover:bg-[#7D2948]/20 text-[#7D2948] dark:text-[#F3ACB6] text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Globe className="w-3 h-3" />
+                          {isTranslationShown ? t('comment_show_original') : t('comment_translate_to_hi')}
+                        </button>
                       </div>
                     </div>
 
-                    {comm.timestampAudio && (
-                      <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 flex items-center gap-1">
-                        <Headphones className="w-3 h-3" />
-                        {comm.timestampAudio}
-                      </span>
+                    {comm.isSpoiler && !comm.revealed ? (
+                      <div
+                        onClick={() => toggleSpoiler(comm.id)}
+                        className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between cursor-pointer"
+                      >
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <ShieldAlert className="w-4 h-4" />
+                          {t('comment_spoiler_warning')}
+                        </span>
+                        <span className="font-bold">{t('comment_reveal')}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8E7F73] block mb-0.5">
+                            {t('comment_original_label')} (🇬🇧 English):
+                          </span>
+                          <p className="font-editorial text-sm text-[#4A3F37] dark:text-[#C5BCB3] leading-relaxed">
+                            "{comm.text}"
+                          </p>
+                        </div>
+
+                        {isTranslationShown && (
+                          <div className="p-3 rounded-xl bg-[#F6F4F0] dark:bg-[#2A2420] border-l-3 border-[#7D2948]">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#7D2948] dark:text-[#F3ACB6] block mb-0.5">
+                              {t('comment_translated_hi_label')} (🇮🇳 हिन्दी):
+                            </span>
+                            <p className="font-devanagari text-sm text-[#1E1B18] dark:text-[#F3ECE4] leading-relaxed">
+                              "{translatedText}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </div>
 
-                  {comm.isSpoiler && !comm.revealed ? (
-                    <div
-                      onClick={() => toggleSpoiler(comm.id)}
-                      className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between cursor-pointer"
-                    >
-                      <span className="flex items-center gap-1.5 font-medium">
-                        <ShieldAlert className="w-4 h-4" />
-                        This comment contains spoilers. Click to reveal.
-                      </span>
-                      <span className="font-bold">Reveal</span>
+                    <div className="flex items-center gap-4 text-xs text-[#8E7F73] pt-2 border-t border-[#ECE6DE] dark:border-[#322A24]">
+                      <button
+                        onClick={() => toggleCommentLike(comm.id)}
+                        className={`flex items-center gap-1 hover:text-rose-600 transition-colors cursor-pointer ${
+                          comm.isLiked ? 'text-rose-600 font-bold' : ''
+                        }`}
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${comm.isLiked ? 'fill-rose-600' : ''}`} />
+                        {comm.likes} likes
+                      </button>
                     </div>
-                  ) : (
-                    <p className="font-editorial text-sm text-[#4A3F37] dark:text-[#C5BCB3] leading-relaxed">
-                      {comm.text}
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-4 text-xs text-[#8E7F73] pt-2 border-t border-[#ECE6DE] dark:border-[#322A24]">
-                    <button
-                      onClick={() => toggleCommentLike(comm.id)}
-                      className={`flex items-center gap-1 hover:text-rose-600 transition-colors cursor-pointer ${
-                        comm.isLiked ? 'text-rose-600 font-bold' : ''
-                      }`}
-                    >
-                      <Heart className={`w-3.5 h-3.5 ${comm.isLiked ? 'fill-rose-600' : ''}`} />
-                      {comm.likes} likes
-                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

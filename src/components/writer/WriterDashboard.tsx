@@ -17,6 +17,11 @@ import {
   Clock,
   Layers,
   Award,
+  Globe,
+  RefreshCw,
+  CheckCircle2,
+  Volume2,
+  Edit3,
 } from 'lucide-react';
 import { useStoryVerse, ViewMode } from '../../context/StoryVerseContext';
 import { Story } from '../../types';
@@ -24,21 +29,63 @@ import { Story } from '../../types';
 export const WriterDashboard: React.FC = () => {
   const {
     stories,
+    rawStories,
     chapters,
+    rawChapters,
     pulseData,
     storyPulse,
     setActiveStoryId,
     setActiveChapterId,
     setViewMode,
     currentUser,
+    getLocalizedChapter,
+    updateChapterTranslation,
+    translateChapter,
+    isTranslating,
+    playChapterAudio,
     t,
   } = useStoryVerse();
 
   const authorStories = stories.filter((s) => s.authorId === currentUser.id || s.authorId === 'user-1');
   const activeStory = authorStories[0] || stories[0];
+  const rawActiveStory = rawStories.find((s) => s.id === activeStory?.id) || rawStories[0];
 
   const storyChapters = chapters.filter((c) => c.storyId === activeStory?.id);
+  const rawStoryChapters = rawChapters.filter((c) => c.storyId === activeStory?.id);
   const activePulse = (pulseData && activeStory?.id && pulseData[activeStory.id]) || storyPulse;
+
+  const [selectedTransChapId, setSelectedTransChapId] = useState<string>(
+    rawStoryChapters[0]?.id || 'chap-1-1'
+  );
+  const [isHindiEnabled, setIsHindiEnabled] = useState(true);
+  const [isEditingTranslation, setIsEditingTranslation] = useState(false);
+  const [audioGenNotice, setAudioGenNotice] = useState<string | null>(null);
+
+  const selectedRawChap =
+    rawStoryChapters.find((c) => c.id === selectedTransChapId) || rawStoryChapters[0];
+  const selectedHindiChap = selectedRawChap
+    ? getLocalizedChapter(selectedRawChap, 'hi')
+    : undefined;
+
+  const [editedHindiTitle, setEditedHindiTitle] = useState<string>('');
+  const [editedHindiContent, setEditedHindiContent] = useState<string>('');
+
+  const handleStartEditTranslation = () => {
+    if (!selectedHindiChap) return;
+    setEditedHindiTitle(selectedHindiChap.title);
+    setEditedHindiContent(selectedHindiChap.content);
+    setIsEditingTranslation(true);
+  };
+
+  const handleSaveTranslation = () => {
+    if (!selectedRawChap) return;
+    updateChapterTranslation(selectedRawChap.id, 'hi', {
+      title: editedHindiTitle,
+      content: editedHindiContent,
+      enabled: isHindiEnabled,
+    });
+    setIsEditingTranslation(false);
+  };
 
   const handleEditChapter = (chapterId: string) => {
     setActiveStoryId(activeStory.id);
@@ -322,6 +369,216 @@ export const WriterDashboard: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Author Control: Multilingual Translation & Audio Narration Studio */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#201C19] border-2 border-[#7D2948]/30 shadow-lg space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-[#ECE6DE] dark:border-[#322A24]">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D2948]/10 text-[#7D2948] dark:text-[#F3ACB6] text-xs font-bold mb-2">
+              <Globe className="w-3.5 h-3.5" />
+              {t('author_trans_title')}
+            </div>
+            <h3 className="font-display text-2xl font-bold text-[#1E1B18] dark:text-[#F3ECE4]">
+              English ↔ हिन्दी Content & Audio Pipeline
+            </h3>
+            <p className="text-xs text-[#8E7F73] mt-1">
+              {t('author_keep_original_note')}
+            </p>
+          </div>
+
+          {/* Status Summary Matrix */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-3 rounded-2xl bg-[#F6F4F0] dark:bg-[#2A2420] border border-[#ECE6DE] dark:border-[#38312B]">
+              <span className="text-[10px] uppercase font-bold text-[#8E7F73] block mb-1">
+                {t('author_orig_lang')}
+              </span>
+              <span className="font-bold text-sm flex items-center gap-1.5">
+                🇬🇧 English (Original)
+              </span>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-[#F6F4F0] dark:bg-[#2A2420] border border-[#ECE6DE] dark:border-[#38312B]">
+              <span className="text-[10px] uppercase font-bold text-[#8E7F73] block mb-1">
+                {t('author_avail_trans')}
+              </span>
+              <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400">
+                <span>✓ English</span>
+                <span>·</span>
+                <span>{isHindiEnabled ? '✓ Hindi (हिन्दी)' : '⏸ Hindi Disabled'}</span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-[#F6F4F0] dark:bg-[#2A2420] border border-[#ECE6DE] dark:border-[#38312B]">
+              <span className="text-[10px] uppercase font-bold text-[#8E7F73] block mb-1">
+                {t('author_audio_status')}
+              </span>
+              <div className="flex items-center gap-2 font-bold text-purple-700 dark:text-purple-300">
+                <span>✓ English Audio</span>
+                <span>·</span>
+                <span>✓ Hindi Audio</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls Bar: Select Chapter, Regenerate, Audio Generation, Enable/Disable */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-[#8E7F73]">Select Chapter:</span>
+            <select
+              value={selectedTransChapId}
+              onChange={(e) => {
+                setSelectedTransChapId(e.target.value);
+                setIsEditingTranslation(false);
+              }}
+              className="px-3 py-2 rounded-xl bg-[#F6F4F0] dark:bg-[#2A2420] border border-[#ECE6DE] dark:border-[#38312B] text-xs font-semibold outline-none cursor-pointer"
+            >
+              {rawStoryChapters.map((ch) => (
+                <option key={ch.id} value={ch.id}>
+                  Part {ch.chapterNumber}: {ch.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {!isEditingTranslation ? (
+              <button
+                onClick={handleStartEditTranslation}
+                className="px-3.5 py-2 rounded-xl bg-[#7D2948] text-white text-xs font-semibold hover:bg-[#68203a] flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                {t('author_edit_trans')}
+              </button>
+            ) : (
+              <button
+                onClick={handleSaveTranslation}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 flex items-center gap-1.5 cursor-pointer"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Save Hindi Translation
+              </button>
+            )}
+
+            <button
+              onClick={() => selectedRawChap && translateChapter(selectedRawChap.id, 'hi')}
+              className="px-3.5 py-2 rounded-xl border border-[#ECE6DE] dark:border-[#38312B] hover:bg-[#F6F4F0] dark:hover:bg-[#2A2420] text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isTranslating ? 'animate-spin text-[#7D2948]' : ''}`} />
+              {isTranslating ? t('lang_translating_to_hi') : t('author_regen_trans')}
+            </button>
+
+            <button
+              onClick={() => {
+                if (!selectedRawChap) return;
+                setAudioGenNotice('✓ English AI Narration active — Playing English Audio');
+                playChapterAudio(activeStory.id, selectedRawChap.id, 0, 'en');
+              }}
+              className="px-3.5 py-2 rounded-xl bg-purple-500/10 text-purple-800 dark:text-purple-300 border border-purple-500/25 hover:bg-purple-500/20 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Volume2 className="w-3.5 h-3.5" />
+              {t('author_gen_en_audio')}
+            </button>
+
+            <button
+              onClick={() => {
+                if (!selectedRawChap) return;
+                setAudioGenNotice('✓ हिन्दी AI ऑडियो तैयार है — Playing Hindi Audio Narration');
+                playChapterAudio(activeStory.id, selectedRawChap.id, 0, 'hi');
+              }}
+              className="px-3.5 py-2 rounded-xl bg-amber-500/15 text-amber-900 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Headphones className="w-3.5 h-3.5" />
+              {t('author_gen_hi_audio')}
+            </button>
+
+            <button
+              onClick={() => setIsHindiEnabled(!isHindiEnabled)}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border cursor-pointer ${
+                isHindiEnabled
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                  : 'border-neutral-400/30 bg-neutral-500/10 text-neutral-500'
+              }`}
+            >
+              {isHindiEnabled ? '✓ Hindi Enabled' : 'Enable Hindi'}
+            </button>
+          </div>
+        </div>
+
+        {audioGenNotice && (
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between">
+            <span>{audioGenNotice}</span>
+            <button onClick={() => setAudioGenNotice(null)} className="text-[11px] underline cursor-pointer">
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Side-by-Side Original English (Preserved) vs Hindi Translation Review/Editor */}
+        {selectedRawChap && selectedHindiChap && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+            {/* Left: Original Story (Never Overwritten) */}
+            <div className="p-5 rounded-2xl bg-[#F6F4F0] dark:bg-[#181512] border border-[#ECE6DE] dark:border-[#322A24] space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#8E7F73]">
+                  🇬🇧 Original Version (Preserved Read-Only)
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-black/5 dark:bg-white/10 font-semibold">
+                  Original Story: {rawActiveStory?.title}
+                </span>
+              </div>
+              <h4 className="font-display font-bold text-lg text-[#1E1B18] dark:text-[#F3ECE4]">
+                {selectedRawChap.title}
+              </h4>
+              <div className="font-editorial text-xs text-[#4A3F37] dark:text-[#C5BCB3] leading-relaxed max-h-60 overflow-y-auto space-y-2 pr-2">
+                {selectedRawChap.content.split('\n\n').map((para, i) => (
+                  <p key={i}>{para}</p>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Hindi Translation (Separate Storage, Editable) */}
+            <div className="p-5 rounded-2xl bg-[#FAF6F0] dark:bg-[#231D1A] border-2 border-[#7D2948]/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#7D2948] dark:text-[#F3ACB6]">
+                  🇮🇳 हिन्दी अनुवाद (Stored Separately)
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold">
+                  ✓ Natural Literary Hindi
+                </span>
+              </div>
+
+              {isEditingTranslation ? (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={editedHindiTitle}
+                    onChange={(e) => setEditedHindiTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#181512] border border-[#7D2948] text-sm font-bold font-devanagari outline-none"
+                  />
+                  <textarea
+                    value={editedHindiContent}
+                    onChange={(e) => setEditedHindiContent(e.target.value)}
+                    rows={8}
+                    className="w-full p-3 rounded-xl bg-white dark:bg-[#181512] border border-[#7D2948] text-xs font-devanagari leading-relaxed outline-none"
+                  />
+                </div>
+              ) : (
+                <>
+                  <h4 className="font-devanagari font-bold text-lg text-[#1E1B18] dark:text-[#F3ECE4]">
+                    {selectedHindiChap.title}
+                  </h4>
+                  <div className="font-devanagari text-xs text-[#4A3F37] dark:text-[#C5BCB3] leading-relaxed max-h-60 overflow-y-auto space-y-2 pr-2">
+                    {selectedHindiChap.content.split('\n\n').map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

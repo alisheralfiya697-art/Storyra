@@ -13,9 +13,12 @@ import {
   GitBranch,
   ArrowRight,
   Filter,
+  Globe,
+  Search,
 } from 'lucide-react';
 import { useStoryVerse } from '../../context/StoryVerseContext';
 import { Mood, Story } from '../../types';
+import { PWAInstallButton } from '../mobile/PWAInstallButton';
 
 export const DiscoverView: React.FC = () => {
   const {
@@ -35,27 +38,29 @@ export const DiscoverView: React.FC = () => {
   const [selectedMood, setSelectedMood] = useState<Mood | 'All'>('All');
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<string>('all');
   const [genreFilter, setGenreFilter] = useState<string>('all');
+  const [languageFilter, setLanguageFilter] = useState<'all' | 'en' | 'hi' | 'both'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const moodsList: { label: Mood; emoji: string }[] = [
-    { label: 'Suspenseful', emoji: '⚡' },
-    { label: 'Dark', emoji: '🌑' },
-    { label: 'Emotional', emoji: '🥀' },
-    { label: 'Romantic', emoji: '🌹' },
-    { label: 'Scary', emoji: '👁️' },
-    { label: 'Adventure', emoji: '🧭' },
-    { label: 'Inspirational', emoji: '✨' },
-    { label: 'Funny', emoji: '🎭' },
+  const moodsList: { label: Mood; displayKey: string; emoji: string }[] = [
+    { label: 'Suspenseful', displayKey: 'discovery_mood_suspenseful', emoji: '⚡' },
+    { label: 'Dark', displayKey: 'discovery_mood_dark', emoji: '🌑' },
+    { label: 'Emotional', displayKey: 'discovery_mood_emotional', emoji: '🥀' },
+    { label: 'Romantic', displayKey: 'discovery_mood_romantic', emoji: '🌹' },
+    { label: 'Scary', displayKey: 'discovery_mood_scary', emoji: '👁️' },
+    { label: 'Adventure', displayKey: 'discovery_mood_adventure', emoji: '🧭' },
+    { label: 'Inspirational', displayKey: 'discovery_mood_inspirational', emoji: '✨' },
+    { label: 'Funny', displayKey: 'discovery_mood_funny', emoji: '🎭' },
   ];
 
   const timeOptions = [
-    { label: 'Any Duration', value: 'all' },
-    { label: '5 min', value: '5' },
-    { label: '15 min', value: '15' },
-    { label: '30 min', value: '30' },
-    { label: '1 hour+', value: '60' },
+    { label: t('discovery_time_any'), value: 'all' },
+    { label: t('discovery_time_5'), value: '5' },
+    { label: t('discovery_time_15'), value: '15' },
+    { label: t('discovery_time_30'), value: '30' },
+    { label: t('discovery_time_60'), value: '60' },
   ];
 
-  // Filtered stories based on mood, time, genre
+  // Filtered stories based on mood, time, genre, language, and search
   const filteredStories = stories.filter((story) => {
     if (selectedMood !== 'All' && !story.moods.includes(selectedMood)) {
       return false;
@@ -67,6 +72,13 @@ export const DiscoverView: React.FC = () => {
     if (selectedTimeFilter === '15' && (story.estimatedReadingTime < 10 || story.estimatedReadingTime > 25)) return false;
     if (selectedTimeFilter === '30' && (story.estimatedReadingTime < 25 || story.estimatedReadingTime > 45)) return false;
     if (selectedTimeFilter === '60' && story.estimatedReadingTime < 40) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchTitle = story.title.toLowerCase().includes(q);
+      const matchDesc = story.description.toLowerCase().includes(q);
+      const matchAuthor = story.authorName.toLowerCase().includes(q);
+      if (!matchTitle && !matchDesc && !matchAuthor) return false;
+    }
     return true;
   });
 
@@ -92,7 +104,10 @@ export const DiscoverView: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-12 sm:space-y-16">
+      {/* Mobile App Install Banner */}
+      <PWAInstallButton variant="banner" />
+
       {/* Personalized Discovery Bar */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#201C19] border border-[#ECE6DE] dark:border-[#322A24] shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#ECE6DE] dark:border-[#322A24]">
@@ -138,9 +153,9 @@ export const DiscoverView: React.FC = () => {
                 : 'bg-[#F6F4F0] dark:bg-[#2B2521] text-[#61544B] dark:text-[#C5BCB3] hover:bg-[#ECE7DF]'
             }`}
           >
-            All Moods
+            {t('discovery_all_moods')}
           </button>
-          {moodsList.map(({ label, emoji }) => (
+          {moodsList.map(({ label, displayKey, emoji }) => (
             <button
               key={label}
               onClick={() => setSelectedMood(label)}
@@ -151,9 +166,50 @@ export const DiscoverView: React.FC = () => {
               }`}
             >
               <span>{emoji}</span>
-              <span>{label}</span>
+              <span>{t(displayKey)}</span>
             </button>
           ))}
+        </div>
+
+        {/* Language & Search Discovery Row */}
+        <div className="mt-6 pt-5 border-t border-[#ECE6DE] dark:border-[#322A24] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Language Filter: [All] [English] [Hindi] [English + Hindi] */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-[#8E7F73] flex items-center gap-1.5 mr-1">
+              <Globe className="w-3.5 h-3.5 text-[#7D2948]" />
+              {t('lang_filter_label')}
+            </span>
+            {[
+              { id: 'all', label: t('lang_filter_all') },
+              { id: 'en', label: `🇬🇧 ${t('lang_filter_en')}` },
+              { id: 'hi', label: `🇮🇳 ${t('lang_filter_hi')}` },
+              { id: 'both', label: `🌐 ${t('lang_filter_both')}` },
+            ].map((lf) => (
+              <button
+                key={lf.id}
+                onClick={() => setLanguageFilter(lf.id as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  languageFilter === lf.id
+                    ? 'bg-[#7D2948] text-white shadow-sm'
+                    : 'bg-[#F6F4F0] dark:bg-[#2B2521] text-[#61544B] dark:text-[#C5BCB3] hover:bg-[#ECE7DF]'
+                }`}
+              >
+                {lf.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full lg:w-72">
+            <Search className="w-4 h-4 text-[#8E7F73] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('tool_search')}
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#F6F4F0] dark:bg-[#2B2521] text-xs border border-transparent focus:border-[#7D2948] outline-none"
+            />
+          </div>
         </div>
       </div>
 
@@ -163,10 +219,10 @@ export const DiscoverView: React.FC = () => {
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-[#7D2948]" />
             <h3 className="font-display text-2xl font-bold text-[#1E1B18] dark:text-[#F3ECE4]">
-              Continue Where You Left Off
+              {t('discovery_continue')}
             </h3>
           </div>
-          <span className="text-xs text-[#8E7F73]">Auto-synchronized reading & audio position</span>
+          <span className="text-xs text-[#8E7F73]">{t('discovery_sync_note')}</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -281,26 +337,32 @@ export const DiscoverView: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h3 className="font-display text-2xl sm:text-3xl font-bold text-[#1E1B18] dark:text-[#F3ECE4]">
-              {selectedMood === 'All' ? 'Stories Chosen For You' : `${selectedMood} Stories`}
+              {selectedMood === 'All' ? t('discovery_stories_for_you') : `${selectedMood} Stories`}
             </h3>
             <p className="font-editorial text-sm text-[#8E7F73] mt-1">
-              Showing {filteredStories.length} interactive and audio-enabled works
+              {filteredStories.length} {t('discovery_showing_works')}
             </p>
           </div>
 
           {/* Genre Filters */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {['all', 'Mystery', 'Fantasy', 'Sci-Fi', 'Horror'].map((g) => (
+            {[
+              { id: 'all', label: t('discovery_genre_all') },
+              { id: 'Mystery', label: t('discovery_genre_mystery') },
+              { id: 'Fantasy', label: t('discovery_genre_fantasy') },
+              { id: 'Sci-Fi', label: t('discovery_genre_scifi') },
+              { id: 'Horror', label: t('discovery_genre_horror') },
+            ].map((g) => (
               <button
-                key={g}
-                onClick={() => setGenreFilter(g)}
+                key={g.id}
+                onClick={() => setGenreFilter(g.id)}
                 className={`px-3 py-1 text-xs font-semibold rounded-full capitalize whitespace-nowrap transition-colors cursor-pointer ${
-                  genreFilter === g
+                  genreFilter === g.id
                     ? 'bg-[#1E1B18] text-white dark:bg-white dark:text-[#1E1B18]'
                     : 'bg-[#F6F4F0] dark:bg-[#2C2723] text-[#61544B] dark:text-[#C5BCB3] hover:bg-[#ECE6DE]'
                 }`}
               >
-                {g}
+                {g.label}
               </button>
             ))}
           </div>
@@ -324,12 +386,21 @@ export const DiscoverView: React.FC = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
 
-                  {/* Top Badges */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                      {story.isInteractive && <GitBranch className="w-3 h-3 text-amber-400" />}
-                      {story.genre}
-                    </span>
+                  {/* Top Badges including Multilingual Availability Badge */}
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        {story.isInteractive && <GitBranch className="w-3 h-3 text-amber-400" />}
+                        {story.genre}
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full bg-[#7D2948]/90 backdrop-blur-md text-white text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                        {languageFilter === 'en'
+                          ? t('lang_badge_en')
+                          : languageFilter === 'hi'
+                          ? t('lang_badge_hi')
+                          : t('lang_badge_both')}
+                      </span>
+                    </div>
 
                     <button
                       onClick={(e) => {

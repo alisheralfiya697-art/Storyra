@@ -16,6 +16,7 @@ import {
   Volume1,
   Check,
   Music,
+  Globe,
 } from 'lucide-react';
 import { useStoryVerse } from '../../context/StoryVerseContext';
 import { Chapter, Story } from '../../types';
@@ -47,6 +48,10 @@ export const FullScreenAudioModal: React.FC<FullScreenAudioModalProps> = ({
     comments,
     addComment,
     currentUser,
+    audioLanguage,
+    switchAudioLanguage,
+    setReadingLanguage,
+    setLanguage,
     t,
   } = useStoryVerse();
 
@@ -118,6 +123,25 @@ export const FullScreenAudioModal: React.FC<FullScreenAudioModalProps> = ({
         </button>
 
         <div className="flex items-center gap-2">
+          {/* Language Selector in Fullscreen Audio Modal */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-white/15 text-xs">
+            <Globe className="w-3.5 h-3.5 text-[#F3ACB6]" />
+            <span className="hidden sm:inline text-neutral-300">{t('nav_language')}:</span>
+            <select
+              value={audioLanguage}
+              onChange={(e) => {
+                const newLang = e.target.value as 'en' | 'hi';
+                switchAudioLanguage(newLang);
+                setReadingLanguage(newLang);
+                setLanguage(newLang);
+              }}
+              className="bg-transparent font-bold text-white outline-none cursor-pointer"
+            >
+              <option value="en" className="text-black">🇬🇧 English</option>
+              <option value="hi" className="text-black">🇮🇳 हिन्दी</option>
+            </select>
+          </div>
+
           <button
             onClick={() => setShowVoiceSettings(!showVoiceSettings)}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -168,11 +192,18 @@ export const FullScreenAudioModal: React.FC<FullScreenAudioModalProps> = ({
         </div>
 
         {/* Narrative Title & Chapter */}
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7D2948]/40 border border-[#F3ACB6]/30 text-xs font-bold text-[#F3ACB6] mb-2">
+          <span>{t('lang_playing_in')} {audioLanguage === 'hi' ? '🇮🇳 हिन्दी' : '🇬🇧 English'}</span>
+          <span>·</span>
+          <span className="text-emerald-300">
+            {audioLanguage === 'hi' ? t('lang_audio_status_hi_available') : t('lang_audio_status_en_available')}
+          </span>
+        </div>
         <span className="text-xs font-bold uppercase tracking-widest text-[#F3ACB6] mb-1">
           {story.title}
         </span>
         <h2 className="font-display text-2xl sm:text-3xl font-bold mb-1">
-          {chapter.title}
+          🎧 {chapter.title}
         </h2>
         
         {/* Voice Style Active Tagline */}
@@ -210,7 +241,9 @@ export const FullScreenAudioModal: React.FC<FullScreenAudioModalProps> = ({
 
           <div className="flex items-center justify-between text-xs font-mono text-neutral-400 mt-2">
             <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(durationTime)}</span>
+            <span>
+              -{formatTime(Math.max(0, durationTime - currentTime))} / {formatTime(durationTime)}
+            </span>
           </div>
         </div>
 

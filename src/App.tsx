@@ -20,54 +20,72 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AudioPlayer } from './components/audio/AudioPlayer';
 import { AuthModal } from './components/auth/AuthModal';
 import { InvestorDemoBanner } from './components/demo/InvestorDemoBanner';
+import { MobileBottomNav } from './components/mobile/MobileBottomNav';
+import { OfflineIndicator } from './components/mobile/OfflineIndicator';
+import { AndroidSimulatorFrame } from './components/mobile/AndroidSimulatorFrame';
 
 const MainContent: React.FC = () => {
-  const { viewMode, readingPrefs, audioState, isRTL } = useStoryVerse();
+  const { viewMode, readingPrefs, audioState, isRTL, isAndroidPreview, toggleAndroidPreview } = useStoryVerse();
 
   const isDarkMode = readingPrefs.theme === 'dark';
   const isSepia = readingPrefs.theme === 'sepia';
 
   // In full distraction-free reading or writing mode, we can hide the top global navbar
   const hideGlobalNavbar = viewMode === 'writer_editor';
+  const hasAudio = !!(audioState.activeChapterId || audioState.chapterId);
+  const bottomPaddingClass =
+    viewMode === 'writer_editor'
+      ? ''
+      : hasAudio
+      ? 'pb-40 md:pb-24'
+      : 'pb-18 md:pb-0';
 
   return (
-    <div
-      dir={isRTL ? 'rtl' : 'ltr'}
-      className={`min-h-screen transition-colors duration-300 font-sans-ui flex flex-col ${
-        isDarkMode
-          ? 'bg-[#151210] text-[#E8E1D9]'
-          : isSepia && viewMode === 'read'
-          ? 'bg-[#F4ECD8] text-[#3D3226]'
-          : 'bg-[#FAF8F5] text-[#241F1A]'
-      } ${(audioState.activeChapterId || audioState.chapterId) ? 'pb-24' : ''}`}
-    >
-      {/* Demo Banner */}
-      <InvestorDemoBanner />
+    <AndroidSimulatorFrame isActive={isAndroidPreview} onToggle={toggleAndroidPreview}>
+      <div
+        dir={isRTL ? 'rtl' : 'ltr'}
+        className={`min-h-screen transition-colors duration-300 font-sans-ui flex flex-col ${
+          isDarkMode
+            ? 'bg-[#151210] text-[#E8E1D9]'
+            : isSepia && viewMode === 'read'
+            ? 'bg-[#F4ECD8] text-[#3D3226]'
+            : 'bg-[#FAF8F5] text-[#241F1A]'
+        } ${bottomPaddingClass}`}
+      >
+        {/* Offline Status Toast */}
+        <OfflineIndicator />
 
-      {/* Main Global Navbar */}
-      {!hideGlobalNavbar && <Navbar />}
+        {/* Demo Banner */}
+        {!isAndroidPreview && <InvestorDemoBanner />}
 
-      {/* Router View */}
-      <main className="flex-1">
-        {viewMode === 'landing' && <LandingPage />}
-        {viewMode === 'discover' && <DiscoverView />}
-        {viewMode === 'story_details' && <StoryDetailsView />}
-        {viewMode === 'read' && <ImmersiveReaderView />}
-        {viewMode === 'writer_dashboard' && <WriterDashboard />}
-        {viewMode === 'writer_editor' && <DistractionFreeEditor />}
-        {viewMode === 'story_tree' && <StoryTreeEditor />}
-        {viewMode === 'story_pulse' && <StoryPulseAnalytics />}
-        {viewMode === 'challenges' && <ChallengesView />}
-        {viewMode === 'profile' && <ProfileView />}
-        {viewMode === 'admin' && <AdminDashboard />}
-      </main>
+        {/* Main Global Navbar */}
+        {!hideGlobalNavbar && <Navbar />}
 
-      {/* Persistent Mini Audio Player */}
-      <AudioPlayer />
+        {/* Router View */}
+        <main className="flex-1">
+          {viewMode === 'landing' && <LandingPage />}
+          {viewMode === 'discover' && <DiscoverView />}
+          {viewMode === 'story_details' && <StoryDetailsView />}
+          {viewMode === 'read' && <ImmersiveReaderView />}
+          {viewMode === 'writer_dashboard' && <WriterDashboard />}
+          {viewMode === 'writer_editor' && <DistractionFreeEditor />}
+          {viewMode === 'story_tree' && <StoryTreeEditor />}
+          {viewMode === 'story_pulse' && <StoryPulseAnalytics />}
+          {viewMode === 'challenges' && <ChallengesView />}
+          {viewMode === 'profile' && <ProfileView />}
+          {viewMode === 'admin' && <AdminDashboard />}
+        </main>
 
-      {/* Authentication / Persona Switcher Modal */}
-      <AuthModal />
-    </div>
+        {/* Persistent Mini Audio Player */}
+        <AudioPlayer />
+
+        {/* Native-style Mobile Bottom App Dock */}
+        <MobileBottomNav />
+
+        {/* Authentication / Persona Switcher Modal */}
+        <AuthModal />
+      </div>
+    </AndroidSimulatorFrame>
   );
 };
 

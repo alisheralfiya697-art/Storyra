@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useStoryVerse, ViewMode } from '../../context/StoryVerseContext';
 import { SUPPORTED_LANGUAGES, AppLanguage } from '../../i18n/translations';
+import { PWAInstallButton } from '../mobile/PWAInstallButton';
 
 export const Navbar: React.FC = () => {
   const {
@@ -44,6 +45,8 @@ export const Navbar: React.FC = () => {
     setLanguage,
     t,
     isRTL,
+    isAndroidPreview,
+    toggleAndroidPreview,
   } = useStoryVerse();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -220,6 +223,26 @@ export const Navbar: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Install Mobile App PWA Button */}
+          <PWAInstallButton variant="pill" />
+
+          {/* Android Mobile Simulator Toggle Button */}
+          <button
+            id="nav-android-preview-btn"
+            onClick={toggleAndroidPreview}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-all flex items-center gap-1.5 cursor-pointer ${
+              isAndroidPreview
+                ? 'bg-[#10B981] text-white border-emerald-600 shadow-sm'
+                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+            }`}
+            title="Toggle Android Mobile App Frame Simulation"
+          >
+            <span>📱</span>
+            <span className="hidden sm:inline">
+              {isAndroidPreview ? 'Exit Android View' : 'Android App View'}
+            </span>
+          </button>
 
           {/* Investor Demo Flow Trigger */}
           <button

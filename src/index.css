@@ -2,22 +2,40 @@
 
 @layer base {
   :root {
-    --font-display: 'Fraunces', Georgia, serif;
-    --font-editorial: 'Newsreader', Georgia, serif;
-    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-display: 'Fraunces', 'Noto Serif Devanagari', Georgia, serif;
+    --font-editorial: 'Newsreader', 'Noto Serif Devanagari', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
+  }
+
+  html[lang="hi"] body {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
+    line-height: 1.65;
+  }
+
+  body {
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  button, a, input, select, textarea {
+    touch-action: manipulation;
   }
 }
 
 .font-display {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: 'Fraunces', 'Noto Serif Devanagari', Georgia, serif;
 }
 
 .font-editorial {
-  font-family: 'Newsreader', Georgia, serif;
+  font-family: 'Newsreader', 'Noto Serif Devanagari', Georgia, serif;
 }
 
 .font-sans-ui {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
+}
+
+.font-devanagari {
+  font-family: 'Noto Sans Devanagari', 'Plus Jakarta Sans', sans-serif;
 }
 
 /* Custom scrollbars for editorial cards and distraction-free panels */

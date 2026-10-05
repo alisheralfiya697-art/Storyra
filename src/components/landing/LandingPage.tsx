@@ -20,6 +20,7 @@ import {
   BookMarked,
 } from 'lucide-react';
 import { useStoryVerse } from '../../context/StoryVerseContext';
+import { PWAInstallButton } from '../mobile/PWAInstallButton';
 
 export const LandingPage: React.FC = () => {
   const {
@@ -145,6 +146,9 @@ export const LandingPage: React.FC = () => {
                 <span>{t('nav_register')}</span>
               </button>
             </div>
+
+            {/* Mobile App Install Banner */}
+            <PWAInstallButton variant="banner" className="mb-10 text-left" />
 
             {/* Interactive Visual Demonstration Flow: Writer -> Story -> Reader -> Vote -> Next Chapter */}
             <div className="p-6 rounded-2xl bg-[#F6F3EE] dark:bg-[#201C19] border border-[#ECE6DE] dark:border-[#322A24] shadow-sm">

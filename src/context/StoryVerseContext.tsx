@@ -123,7 +123,9 @@ interface StoryVerseContextType {
   
   // Stories & Chapters
   stories: Story[];
+  rawStories: Story[];
   chapters: Chapter[];
+  rawChapters: Chapter[];
   characters: Character[];
   universes: StoryUniverse[];
   challenges: Challenge[];
@@ -215,6 +217,11 @@ interface StoryVerseContextType {
   setDemoStep: (step: number) => void;
   advanceDemoStep: () => void;
   resetDemoState: () => void;
+
+  // Android Mobile Device Simulator
+  isAndroidPreview: boolean;
+  setIsAndroidPreview: (active: boolean) => void;
+  toggleAndroidPreview: () => void;
 }
 
 const StoryVerseContext = createContext<StoryVerseContextType | undefined>(undefined);
@@ -349,6 +356,10 @@ export const StoryVerseProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Guided Walkthrough / Demo Mode state (supporting Demo Flow #32)
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [demoStep, setDemoStep] = useState(1);
+
+  // Android Mobile Simulator State
+  const [isAndroidPreview, setIsAndroidPreview] = useState(false);
+  const toggleAndroidPreview = () => setIsAndroidPreview((prev) => !prev);
 
   // Synchronize localStorage
   useEffect(() => {
@@ -499,7 +510,7 @@ export const StoryVerseProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return {
           ...char,
           name: hiTrans.name || char.name,
-          roleDescription: hiTrans.roleDescription || char.roleDescription,
+          description: hiTrans.description || char.description,
           personality: hiTrans.personality || char.personality,
           occupation: hiTrans.occupation || char.occupation,
           appearance: hiTrans.appearance || char.appearance,
@@ -508,8 +519,8 @@ export const StoryVerseProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return {
         ...char,
         name: translateTextToHindi(char.name),
-        roleDescription: translateTextToHindi(char.roleDescription),
-        personality: translateTextToHindi(char.personality),
+        description: translateTextToHindi(char.description),
+        personality: char.personality.map((p) => translateTextToHindi(p)),
       };
     }
     return char;
@@ -618,6 +629,18 @@ export const StoryVerseProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const rawActiveStory = stories.find((s) => s.id === activeStoryId) || stories[0];
   const rawActiveChapter = chapters.find((c) => c.id === activeChapterId) || chapters[0];
 
+  const localizedStories = useMemo(() => {
+    return stories.map((s) => getLocalizedStory(s, readingLanguage));
+  }, [stories, readingLanguage]);
+
+  const localizedChapters = useMemo(() => {
+    return chapters.map((c) => getLocalizedChapter(c, readingLanguage));
+  }, [chapters, readingLanguage]);
+
+  const localizedCharacters = useMemo(() => {
+    return characters.map((ch) => getLocalizedCharacter(ch, readingLanguage));
+  }, [characters, readingLanguage]);
+
   const activeStory = useMemo(() => {
     return rawActiveStory ? getLocalizedStory(rawActiveStory, readingLanguage) : undefined;
   }, [rawActiveStory, readingLanguage]);
@@ -625,6 +648,25 @@ export const StoryVerseProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const activeChapter = useMemo(() => {
     return rawActiveChapter ? getLocalizedChapter(rawActiveChapter, readingLanguage) : undefined;
   }, [rawActiveChapter, readingLanguage]);
+
+  // Language-aware URL route synchronization (/en/story/... or /hi/story/...)
+  useEffect(() => {
+    try {
+      const langPrefix = language === 'hi' ? 'hi' : language === 'ur' ? 'ur' : 'en';
+      const routeSuffix =
+        viewMode === 'story_details' || viewMode === 'read'
+          ? `story/${activeStoryId}/${viewMode === 'read' ? activeChapterId : ''}`
+          : viewMode === 'landing'
+          ? ''
+          : viewMode;
+      const newHash = `#/${langPrefix}${routeSuffix ? `/${routeSuffix}` : ''}`;
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    } catch {
+      // ignore security errors in restricted iframe contexts
+    }
+  }, [language, viewMode, activeStoryId, activeChapterId]);
 
   const switchUser = (userId: string) => {
     const target = allUsers.find((u) => u.id === userId);
@@ -1438,9 +1480,11 @@ Every choice leaves a footprint in the masonry. And now, the true labyrinth begi
         setActiveStoryId,
         activeChapterId,
         setActiveChapterId,
-        stories,
-        chapters,
-        characters,
+        stories: localizedStories,
+        rawStories: stories,
+        chapters: localizedChapters,
+        rawChapters: chapters,
+        characters: localizedCharacters,
         universes,
         challenges,
         achievements,
@@ -1507,6 +1551,9 @@ Every choice leaves a footprint in the masonry. And now, the true labyrinth begi
         setDemoStep,
         advanceDemoStep,
         resetDemoState,
+        isAndroidPreview,
+        setIsAndroidPreview,
+        toggleAndroidPreview,
       }}
     >
       {children}

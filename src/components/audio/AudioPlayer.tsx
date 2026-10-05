@@ -4,6 +4,8 @@ import {
   Pause,
   RotateCcw,
   RotateCw,
+  SkipBack,
+  SkipForward,
   Volume2,
   VolumeX,
   Maximize2,
@@ -12,6 +14,7 @@ import {
   Volume1,
   Check,
   ChevronUp,
+  Globe,
 } from 'lucide-react';
 import { useStoryVerse } from '../../context/StoryVerseContext';
 import { FullScreenAudioModal } from './FullScreenAudioModal';
@@ -20,6 +23,7 @@ import { VOICE_STYLE_CONFIGS } from '../../utils/audioEngine';
 export const AudioPlayer: React.FC = () => {
   const {
     audioState,
+    playChapterAudio,
     togglePlayPause,
     seekAudio,
     setAudioSpeed,
@@ -30,6 +34,10 @@ export const AudioPlayer: React.FC = () => {
     syncAudioToReading,
     stories,
     chapters,
+    audioLanguage,
+    switchAudioLanguage,
+    setReadingLanguage,
+    setLanguage,
     t,
   } = useStoryVerse();
 
@@ -50,7 +58,19 @@ export const AudioPlayer: React.FC = () => {
 
   const currentTime = audioState.currentTimeSeconds || audioState.currentTime || 0;
   const durationTime = audioState.durationSeconds || audioState.duration || 480;
+  const remainingTime = Math.max(0, durationTime - currentTime);
   const currentSpeed = audioState.speed || audioState.playbackSpeed || 1;
+
+  const storyChapters = chapters.filter((c) => c.storyId === currentStory.id);
+  const currentChapIdx = storyChapters.findIndex((c) => c.id === currentChapter.id);
+  const prevChap = currentChapIdx > 0 ? storyChapters[currentChapIdx - 1] : null;
+  const nextChap = currentChapIdx < storyChapters.length - 1 ? storyChapters[currentChapIdx + 1] : null;
+
+  const handleAudioLangChange = (newLang: 'en' | 'hi') => {
+    switchAudioLanguage(newLang);
+    setReadingLanguage(newLang);
+    setLanguage(newLang);
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -78,7 +98,7 @@ export const AudioPlayer: React.FC = () => {
       {/* Persistent Mini Audio Bar docked at screen bottom */}
       <div
         id="persistent-audio-player"
-        className="fixed bottom-0 left-0 right-0 z-40 bg-[#171412]/95 backdrop-blur-xl border-t border-[#342D28] text-white shadow-2xl transition-all"
+        className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 z-40 bg-[#171412]/95 backdrop-blur-xl border-t border-[#342D28] text-white shadow-2xl transition-all"
       >
         {/* Progress Bar scrubber at the very top edge */}
         <div className="relative w-full h-1.5 bg-[#2E2722] cursor-pointer group">
@@ -120,25 +140,29 @@ export const AudioPlayer: React.FC = () => {
             </div>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#F3ACB6] truncate">
                   {currentStory.title}
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 text-emerald-300 bg-emerald-950/60 border border-emerald-700/40 rounded-full font-medium">
+                <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 text-amber-200 bg-[#7D2948]/80 border border-[#F3ACB6]/30 rounded-full font-bold">
+                  {t('lang_playing_in')} {audioLanguage === 'hi' ? '🇮🇳 हिन्दी' : '🇬🇧 English'}
+                </span>
+                <span className="hidden lg:inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 text-emerald-300 bg-emerald-950/60 border border-emerald-700/40 rounded-full font-medium">
                   <Sparkles className="w-2.5 h-2.5" />
-                  {t('audio_thin_voice')}
+                  {audioLanguage === 'hi' ? t('lang_audio_status_hi_available') : t('lang_audio_status_en_available')}
                 </span>
               </div>
               <h5
                 onClick={() => setIsFullScreen(true)}
                 className="text-xs sm:text-sm font-semibold truncate hover:underline cursor-pointer"
               >
-                {currentChapter.title}
+                🎧 {currentChapter.title}
               </h5>
               <div className="flex items-center gap-2 text-[11px] text-[#A89D91]">
                 <span>{formatTime(currentTime)}</span>
                 <span>/</span>
                 <span>{formatTime(durationTime)}</span>
+                <span className="text-[10px] opacity-75">(-{formatTime(remainingTime)})</span>
                 {/* Audio animated wave bars when playing */}
                 {audioState.isPlaying && (
                   <div className="flex items-center gap-0.5 ml-1 h-3">
@@ -153,7 +177,17 @@ export const AudioPlayer: React.FC = () => {
 
           {/* Center: Playback Controls & Thin Voice Style Quick Switcher */}
           <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-4">
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-3">
+              {/* Previous Chapter */}
+              <button
+                onClick={() => prevChap && playChapterAudio(currentStory.id, prevChap.id, 0, audioLanguage)}
+                disabled={!prevChap}
+                className="p-1.5 rounded-full hover:bg-white/10 text-neutral-300 hover:text-white disabled:opacity-30 transition-colors cursor-pointer"
+                title={t('audio_previous')}
+              >
+                <SkipBack className="w-4 h-4" />
+              </button>
+
               {/* -10s skip */}
               <button
                 onClick={() => seekAudio(Math.max(0, currentTime - 10))}
@@ -184,6 +218,16 @@ export const AudioPlayer: React.FC = () => {
                 title="Skip forward 30 seconds"
               >
                 <RotateCw className="w-4 h-4" />
+              </button>
+
+              {/* Next Chapter */}
+              <button
+                onClick={() => nextChap && playChapterAudio(currentStory.id, nextChap.id, 0, audioLanguage)}
+                disabled={!nextChap}
+                className="p-1.5 rounded-full hover:bg-white/10 text-neutral-300 hover:text-white disabled:opacity-30 transition-colors cursor-pointer"
+                title={t('audio_next')}
+              >
+                <SkipForward className="w-4 h-4" />
               </button>
             </div>
 
@@ -256,8 +300,23 @@ export const AudioPlayer: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: Read Sync Transition & Options */}
+          {/* Right: Audio Language Selector, Read Sync Transition & Options */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Audio Language Selector: [ 🇬🇧 English | 🇮🇳 हिन्दी ] */}
+            <div className="flex items-center gap-1 bg-[#2A2420] border border-[#3E3630] rounded-lg px-2 py-1">
+              <Globe className="w-3 h-3 text-[#F3ACB6] hidden sm:inline" />
+              <select
+                id="mini-audio-language-select"
+                value={audioLanguage}
+                onChange={(e) => handleAudioLangChange(e.target.value as 'en' | 'hi')}
+                className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer"
+                aria-label="Audio narration language"
+              >
+                <option value="en" className="text-black">🇬🇧 English</option>
+                <option value="hi" className="text-black">🇮🇳 हिन्दी</option>
+              </select>
+            </div>
+
             {/* Read / Listen Instant Hand-off Button */}
             <button
               id="audio-switch-to-reader-btn"
